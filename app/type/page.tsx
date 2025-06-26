@@ -85,13 +85,12 @@ export default function TypePage() {
           Homepage
         </Link>
       </div>
-      <div
+     <div
         style={{
           position: "absolute",
           top: "72px",
           left: "466px",
           fontSize: "30px",
-          color: "#9ca3af",
           cursor: "pointer",
         }}
       >
@@ -103,7 +102,6 @@ export default function TypePage() {
           top: "72px",
           left: "628px",
           fontSize: "30px",
-          color: "#9ca3af",
           cursor: "pointer",
         }}
       >
@@ -278,40 +276,32 @@ export default function TypePage() {
           </div>
 
           {/* Step 3 - Select MSG bg - Dinamico basato su userName */}
-          <div
+               <div
             style={{
+              marginBottom: "20px",
               padding: "20px",
               borderRadius: "15px",
               backgroundColor: "white",
-              border: `2px solid ${isStep3Enabled ? "#efd682" : "#e5e7eb"}`,
+              border: "2px solid #efd682",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              cursor: isStep3Enabled ? "pointer" : "not-allowed",
-              transition: "all 0.3s ease",
-              opacity: isStep3Enabled ? 1 : 0.6,
+              cursor: "pointer",
+              transition: "border-color 0.3s ease",
             }}
             onClick={onStep3Click}
             onMouseEnter={(e) => {
-              if (isStep3Enabled) {
-                e.currentTarget.style.borderColor = "#e6c875"
-              } else {
-                e.currentTarget.style.borderColor = "#d1d5db"
-              }
+              e.currentTarget.style.borderColor = "#e6c875"
             }}
             onMouseLeave={(e) => {
-              if (isStep3Enabled) {
-                e.currentTarget.style.borderColor = "#efd682"
-              } else {
-                e.currentTarget.style.borderColor = "#e5e7eb"
-              }
+              e.currentTarget.style.borderColor = "#efd682"
             }}
           >
-            <span
+               <span
               style={{
                 fontSize: "20px",
                 fontWeight: "600",
-                color: isStep3Enabled ? "black" : "#9ca3af",
+                color: "black",
               }}
             >
               Select your MSG bg
@@ -330,8 +320,8 @@ export default function TypePage() {
               <span
                 style={{
                   fontSize: "20px",
-                  fontWeight: "bold",
-                  color: "white",
+                  fontWeight: "600",
+                  color: "black",
                 }}
               >
                 3

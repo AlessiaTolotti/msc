@@ -1,23 +1,26 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 
 export default function UploadPage() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const router = useRouter()
 
   const onStep1Click = useCallback(() => {
     document.getElementById("image-upload")?.click()
   }, [])
 
 const onStep2Click = useCallback(() => {
-  window.location.href = "/type"
-}, [])
+  router.push("/type")
+}, [router])
 
-const onStep3Click = useCallback(() => {
-  console.log("Step 3 clicked - ready to proceed")
-}, [])
 
+
+  const onStep3Click = useCallback(() => {
+    console.log("Step 3 clicked - ready to proceed")
+  }, [])
 
   const onUploadAreaClick = useCallback(() => {
     document.getElementById("image-upload")?.click()
@@ -207,14 +210,14 @@ const onStep3Click = useCallback(() => {
             </div>
           </div>
 
-          {/* Step 2 - Type Name - IDENTICO A STEP 3 */}
+          {/* Step 2 - Type Name - SEMPRE ATTIVO */}
           <div
             style={{
               marginBottom: "20px",
               padding: "20px",
               borderRadius: "15px",
               backgroundColor: "white",
-              border: "2px solid #e5e7eb",
+              border: "2px solid #efd682",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -223,10 +226,10 @@ const onStep3Click = useCallback(() => {
             }}
             onClick={onStep2Click}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#efd682"
+              e.currentTarget.style.borderColor = "#e6c875"
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#e5e7eb"
+              e.currentTarget.style.borderColor = "#efd682"
             }}
           >
             <span
@@ -252,8 +255,8 @@ const onStep3Click = useCallback(() => {
               <span
                 style={{
                   fontSize: "20px",
-                  fontWeight: "bold",
-                  color: "white",
+                  fontWeight: "600",
+                  color: "black",
                 }}
               >
                 2
@@ -271,22 +274,17 @@ const onStep3Click = useCallback(() => {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              cursor: "pointer",
+              cursor: "not-allowed",
               transition: "border-color 0.3s ease",
+              opacity: 0.6,
             }}
             onClick={onStep3Click}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#efd682"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#e5e7eb"
-            }}
           >
             <span
               style={{
                 fontSize: "20px",
                 fontWeight: "600",
-                color: "black",
+                color: "#9ca3af",
               }}
             >
               Select your MSG bg
@@ -296,7 +294,7 @@ const onStep3Click = useCallback(() => {
                 width: "40px",
                 height: "40px",
                 borderRadius: "50%",
-                backgroundColor: "#efd682",
+                backgroundColor: "#e5e7eb",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -306,7 +304,7 @@ const onStep3Click = useCallback(() => {
                 style={{
                   fontSize: "20px",
                   fontWeight: "bold",
-                  color: "white",
+                  color: "#9ca3af",
                 }}
               >
                 3
@@ -443,16 +441,22 @@ const onStep3Click = useCallback(() => {
 
       <input
         type="file"
+        id="image-upload"
         accept="image/*"
+        style={{ display: "none" }}
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) {
-            const imageUrl = URL.createObjectURL(file)
-            setUploadedImage(imageUrl)
+            const reader = new FileReader()
+            reader.onload = (event) => {
+              const result = event.target?.result
+              if (typeof result === "string") {
+                setUploadedImage(result)
+              }
+            }
+            reader.readAsDataURL(file)
           }
         }}
-        style={{ display: "none" }}
-        id="image-upload"
       />
     </div>
   )
