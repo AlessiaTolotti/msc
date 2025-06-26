@@ -1,35 +1,49 @@
 "use client"
 
+import type React from "react"
 import { useState, useCallback } from "react"
-import Image from "next/image"
+import Link from "next/link"
+import { useRouter } from 'next/navigation'
 
-export default function UploadPage() {
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+export default function TypePage() {
+  const [userName, setUserName] = useState<string>("")
+  const [error, setError] = useState<string>("")
+  const router = useRouter()
+
+  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setError("")
+
+    if (value.length > 15) {
+      setError("Maximum 15 letters allowed")
+      return
+    }
+
+    const validName = value.replace(/[^a-zA-Z\s]/g, "")
+    setUserName(validName)
+  }, [])
 
   const onStep1Click = useCallback(() => {
     document.getElementById("image-upload")?.click()
   }, [])
 
-  const onStep2Click = useCallback(() => {
-    if (uploadedImage) {
-      window.location.href = "/type"
-    } else {
-      alert("Please upload your photo first!")
-      document.getElementById("image-upload")?.click()
-    }
-  }, [uploadedImage])
-
   const onStep3Click = useCallback(() => {
-    if (uploadedImage) {
-      console.log("Step 3 clicked - ready to proceed")
-    } else {
-      alert("Please complete the previous steps first!")
+    if (userName.trim().length === 0) {
+      setError("Please enter your name first")
+      return
     }
-  }, [uploadedImage])
+    
+    if (userName.trim().length < 2) {
+      setError("Name must be at least 2 characters")
+      return
+    }
 
-  const onUploadAreaClick = useCallback(() => {
-    document.getElementById("image-upload")?.click()
-  }, [])
+    console.log("Step 3 clicked - ready to proceed")
+    router.push('/background')
+  }, [userName, router])
+
+  // Determina se lo Step 3 è abilitato
+  const isStep3Enabled = userName.trim().length >= 2
 
   return (
     <div
@@ -67,7 +81,9 @@ export default function UploadPage() {
           cursor: "pointer",
         }}
       >
-        Homepage
+        <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>
+          Homepage
+        </Link>
       </div>
       <div
         style={{
@@ -75,6 +91,7 @@ export default function UploadPage() {
           top: "72px",
           left: "466px",
           fontSize: "30px",
+          color: "#9ca3af",
           cursor: "pointer",
         }}
       >
@@ -86,6 +103,7 @@ export default function UploadPage() {
           top: "72px",
           left: "628px",
           fontSize: "30px",
+          color: "#9ca3af",
           cursor: "pointer",
         }}
       >
@@ -162,7 +180,60 @@ export default function UploadPage() {
             STEP:
           </div>
 
-          {/* Step 1 - Upload Photo */}
+          {/* Step 1 - Upload Photo - Completed (Gray) */}
+          <div
+            style={{
+              marginBottom: "20px",
+              padding: "20px",
+              borderRadius: "15px",
+              backgroundColor: "#e5e7eb",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              cursor: "pointer",
+              transition: "background-color 0.3s ease",
+            }}
+            onClick={onStep1Click}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#d1d5db"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#e5e7eb"
+            }}
+          >
+            <span
+              style={{
+                fontSize: "20px",
+                fontWeight: "600",
+                color: "#4b5563",
+              }}
+            >
+              Upload your photo
+            </span>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                backgroundColor: "#9ca3af",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "20px",
+                  fontWeight: "bold",
+                  color: "white",
+                }}
+              >
+                1
+              </span>
+            </div>
+          </div>
+
+          {/* Step 2 - Type Name - Active (Yellow) */}
           <div
             style={{
               marginBottom: "20px",
@@ -172,15 +243,6 @@ export default function UploadPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              cursor: "pointer",
-              transition: "background-color 0.3s ease",
-            }}
-            onClick={onStep1Click}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#e6c875"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#efd682"
             }}
           >
             <span
@@ -190,7 +252,7 @@ export default function UploadPage() {
                 color: "black",
               }}
             >
-              Upload your photo
+              Type your name
             </span>
             <div
               style={{
@@ -210,96 +272,46 @@ export default function UploadPage() {
                   color: "#efd682",
                 }}
               >
-                1
-              </span>
-            </div>
-          </div>
-
-          {/* Step 2 - Type Name */}
-          <div
-            style={{
-              marginBottom: "20px",
-              padding: "20px",
-              borderRadius: "15px",
-              backgroundColor: uploadedImage ? "#efd682" : "white",
-              border: uploadedImage ? "none" : "2px solid #e5e7eb",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              cursor: uploadedImage ? "pointer" : "not-allowed",
-              opacity: uploadedImage ? 1 : 0.6,
-              transition: "all 0.3s ease",
-            }}
-            onClick={onStep2Click}
-            onMouseEnter={(e) => {
-              if (uploadedImage) {
-                e.currentTarget.style.backgroundColor = "#e6c875"
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (uploadedImage) {
-                e.currentTarget.style.backgroundColor = "#efd682"
-              }
-            }}
-          >
-            <span
-              style={{
-                fontSize: "20px",
-                fontWeight: "600",
-                color: uploadedImage ? "black" : "#999",
-              }}
-            >
-              Type your name
-            </span>
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "50%",
-                backgroundColor: uploadedImage ? "white" : "#efd682",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "20px",
-                  fontWeight: "bold",
-                  color: uploadedImage ? "#efd682" : "white",
-                }}
-              >
                 2
               </span>
             </div>
           </div>
 
-          {/* Step 3 - Select MSG bg */}
+          {/* Step 3 - Select MSG bg - Dinamico basato su userName */}
           <div
             style={{
               padding: "20px",
               borderRadius: "15px",
               backgroundColor: "white",
-              border: "2px solid #e5e7eb",
+              border: `2px solid ${isStep3Enabled ? "#efd682" : "#e5e7eb"}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              cursor: "pointer",
-              transition: "border-color 0.3s ease",
+              cursor: isStep3Enabled ? "pointer" : "not-allowed",
+              transition: "all 0.3s ease",
+              opacity: isStep3Enabled ? 1 : 0.6,
             }}
             onClick={onStep3Click}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#efd682"
+              if (isStep3Enabled) {
+                e.currentTarget.style.borderColor = "#e6c875"
+              } else {
+                e.currentTarget.style.borderColor = "#d1d5db"
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#e5e7eb"
+              if (isStep3Enabled) {
+                e.currentTarget.style.borderColor = "#efd682"
+              } else {
+                e.currentTarget.style.borderColor = "#e5e7eb"
+              }
             }}
           >
             <span
               style={{
                 fontSize: "20px",
                 fontWeight: "600",
-                color: "black",
+                color: isStep3Enabled ? "black" : "#9ca3af",
               }}
             >
               Select your MSG bg
@@ -356,117 +368,112 @@ export default function UploadPage() {
           </svg>
         </div>
 
-        {/* Upload Area */}
+        {/* Type Name Area */}
         <div
           style={{
             width: "380px",
             height: "420px",
-            backgroundColor: "#d1d5db",
+            border: "4px dashed #efd682",
             borderRadius: "20px",
-            cursor: "pointer",
-            overflow: "hidden",
+            padding: "40px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
             justifySelf: "start",
           }}
-          onClick={onUploadAreaClick}
         >
-          {uploadedImage ? (
-            <div style={{ position: "relative", width: "100%", height: "100%" }}>
-              <Image
-                src={uploadedImage || "/placeholder.svg"}
-                alt="Uploaded image"
-                width={380}
-                height={420}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  borderRadius: "20px",
-                }}
-              />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setUploadedImage(null)
-                }}
-                style={{
-                  position: "absolute",
-                  top: "15px",
-                  right: "15px",
-                  backgroundColor: "rgba(0, 0, 0, 0.7)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: "35px",
-                  height: "35px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "20px",
-                }}
-              >
-                ×
-              </button>
-            </div>
-          ) : (
-            <div
+          <div
+            style={{
+              fontSize: "28px",
+              fontWeight: "bold",
+              marginBottom: "48px",
+              textAlign: "center",
+            }}
+          >
+            Type your name:
+          </div>
+
+          <div
+            style={{
+              width: "100%",
+              marginBottom: "24px",
+            }}
+          >
+            <input
+              type="text"
+              value={userName}
+              onChange={handleNameChange}
+              placeholder="Enter your name here..."
               style={{
                 width: "100%",
-                height: "100%",
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                textAlign: "center",
+                fontSize: "25px",
+                backgroundColor: "transparent",
+                border: "none",
+                borderBottom: "4px solid #efd682",
+                outline: "none",
+                paddingBottom: "16px",
+                fontFamily: userName ? "Kristi, cursive" : "inherit",
+              }}
+              maxLength={15}
+            />
+          </div>
+
+          <div
+            style={{
+              fontSize: "14px",
+              color: "#6b7280",
+              marginBottom: "16px",
+            }}
+          >
+            {userName.length}/15 characters
+          </div>
+
+          {error && (
+            <div
+              style={{
+                color: "#ef4444",
+                fontSize: "14px",
+                marginBottom: "16px",
+                textAlign: "center",
               }}
             >
-              <div style={{ position: "absolute", inset: "0" }}>
-                {Array.from({ length: 10 }).map((_, row) =>
-                  Array.from({ length: 12 }).map((_, col) => (
-                    <div
-                      key={`${row}-${col}`}
-                      style={{
-                        position: "absolute",
-                        width: "12px",
-                        height: "12px",
-                        backgroundColor: "white",
-                        borderRadius: "50%",
-                        opacity: "0.8",
-                        top: `${row * 35 + 30}px`,
-                        left: `${col * 30 + 25}px`,
-                      }}
-                    />
-                  )),
-                )}
-              </div>
-              <div
-                style={{
-                  position: "relative",
-                  zIndex: "10",
-                  textAlign: "center",
-                  color: "#6b7280",
-                }}
-              >
-                <div style={{ fontSize: "48px", marginBottom: "12px" }}>📷</div>
-                <div style={{ fontSize: "18px", fontWeight: "500" }}>Click to upload image</div>
-              </div>
+              {error}
+            </div>
+          )}
+
+          <div
+            style={{
+              fontSize: "14px",
+              color: "#4b5563",
+              textAlign: "center",
+              marginBottom: "32px",
+              lineHeight: "1.6",
+            }}
+          >
+            The word should be a maximum of 15 letters,
+            once written check typographical errors.
+          </div>
+
+          {/* Indicatore visivo dello stato dello Step 3 */}
+          {isStep3Enabled && (
+            <div
+              style={{
+                fontSize: "14px",
+                color: "#059669",
+                textAlign: "center",
+                fontWeight: "600",
+                backgroundColor: "#d1fae5",
+                padding: "8px 16px",
+                borderRadius: "8px",
+              }}
+            >
+              ✓ Ready to proceed to Step 3!
             </div>
           )}
         </div>
       </div>
-
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) {
-            const imageUrl = URL.createObjectURL(file)
-            setUploadedImage(imageUrl)
-          }
-        }}
-        style={{ display: "none" }}
-        id="image-upload"
-      />
     </div>
   )
 }

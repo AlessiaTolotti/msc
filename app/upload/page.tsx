@@ -10,22 +10,14 @@ export default function UploadPage() {
     document.getElementById("image-upload")?.click()
   }, [])
 
-  const onStep2Click = useCallback(() => {
-    if (uploadedImage) {
-      window.location.href = "/type"
-    } else {
-      alert("Please upload your photo first!")
-      document.getElementById("image-upload")?.click()
-    }
-  }, [uploadedImage])
+const onStep2Click = useCallback(() => {
+  window.location.href = "/type"
+}, [])
 
-  const onStep3Click = useCallback(() => {
-    if (uploadedImage) {
-      console.log("Step 3 clicked - ready to proceed")
-    } else {
-      alert("Please complete the previous steps first!")
-    }
-  }, [uploadedImage])
+const onStep3Click = useCallback(() => {
+  console.log("Step 3 clicked - ready to proceed")
+}, [])
+
 
   const onUploadAreaClick = useCallback(() => {
     document.getElementById("image-upload")?.click()
@@ -162,7 +154,7 @@ export default function UploadPage() {
             STEP:
           </div>
 
-          {/* Step 1 - Upload Photo */}
+          {/* Step 1 - Upload Photo - ATTIVO (Giallo) */}
           <div
             style={{
               marginBottom: "20px",
@@ -215,38 +207,33 @@ export default function UploadPage() {
             </div>
           </div>
 
-          {/* Step 2 - Type Name */}
+          {/* Step 2 - Type Name - IDENTICO A STEP 3 */}
           <div
             style={{
               marginBottom: "20px",
               padding: "20px",
               borderRadius: "15px",
-              backgroundColor: uploadedImage ? "#efd682" : "white",
-              border: uploadedImage ? "none" : "2px solid #e5e7eb",
+              backgroundColor: "white",
+              border: "2px solid #e5e7eb",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              cursor: uploadedImage ? "pointer" : "not-allowed",
-              opacity: uploadedImage ? 1 : 0.6,
-              transition: "all 0.3s ease",
+              cursor: "pointer",
+              transition: "border-color 0.3s ease",
             }}
             onClick={onStep2Click}
             onMouseEnter={(e) => {
-              if (uploadedImage) {
-                e.currentTarget.style.backgroundColor = "#e6c875"
-              }
+              e.currentTarget.style.borderColor = "#efd682"
             }}
             onMouseLeave={(e) => {
-              if (uploadedImage) {
-                e.currentTarget.style.backgroundColor = "#efd682"
-              }
+              e.currentTarget.style.borderColor = "#e5e7eb"
             }}
           >
             <span
               style={{
                 fontSize: "20px",
                 fontWeight: "600",
-                color: uploadedImage ? "black" : "#999",
+                color: "black",
               }}
             >
               Type your name
@@ -256,7 +243,7 @@ export default function UploadPage() {
                 width: "40px",
                 height: "40px",
                 borderRadius: "50%",
-                backgroundColor: uploadedImage ? "white" : "#efd682",
+                backgroundColor: "#efd682",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -266,7 +253,7 @@ export default function UploadPage() {
                 style={{
                   fontSize: "20px",
                   fontWeight: "bold",
-                  color: uploadedImage ? "#efd682" : "white",
+                  color: "white",
                 }}
               >
                 2
@@ -274,7 +261,7 @@ export default function UploadPage() {
             </div>
           </div>
 
-          {/* Step 3 - Select MSG bg */}
+          {/* Step 3 - Select MSG bg - INATTIVO (Solo bordo) */}
           <div
             style={{
               padding: "20px",
