@@ -1,0 +1,201 @@
+// Tipi per le risposte del backend
+export interface BackendResponse {
+  processedImage: string // Base64 or URL dell'immagine scontornata
+  signature: string // Base64 or URL della firma
+  success: boolean
+  message?: string
+}
+
+export interface GeneratedImage {
+  finalImage: string // Base64 or URL dell'immagine finale con sfondo
+  downloadUrl: string
+}
+
+export interface Step1Data {
+  images: string[] // Array di immagini in base64 o URLs
+}
+
+export interface Step2Data {
+  signature: string // Firma in base64 o URL
+  name?: string // Nome digitato dall'utente
+}
+
+// Funzione per recuperare i dati processati dal backend
+export async function fetchProcessedData(): Promise<BackendResponse> {
+  try {
+    // Recupera i dati dalle sessioni precedenti
+    const step1DataRaw = localStorage.getItem("step1_images")
+    const step2DataRaw = localStorage.getItem("step2_signature")
+
+    if (!step1DataRaw || !step2DataRaw) {
+      throw new Error("Missing data from previous steps. Please complete steps 1 and 2 first.")
+    }
+
+    const step1Data: Step1Data = JSON.parse(step1DataRaw)
+    const step2Data: Step2Data = JSON.parse(step2DataRaw)
+
+    // Validazione dei dati
+    if (!step1Data.images || step1Data.images.length === 0) {
+      throw new Error("No images found from step 1")
+    }
+
+    if (!step2Data.signature) {
+      throw new Error("No signature found from step 2")
+    }
+
+    const response = await fetch("/api/process-images", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        images: step1Data.images,
+        signature: step2Data.signature,
+        name: step2Data.name,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+    }
+
+    const data: BackendResponse = await response.json()
+
+    if (!data.success) {
+      throw new Error(data.message || "Failed to process images")
+    }
+
+    return data
+  } catch (error) {
+    console.error("Error in fetchProcessedData:", error)
+    throw error
+  }
+}
+
+// Funzione per generare l'immagine finale con lo sfondo selezionato
+export async function generateFinalImage(
+  processedImage: string,
+  signature: string,
+  background: string,
+): Promise<GeneratedImage> {
+  try {
+    if (!processedImage || !signature || !background) {
+      throw new Error("Missing required data for image generation")
+    }
+
+    const response = await fetch("/api/generate-final-image", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        processedImage,
+        signature,
+        background,
+        timestamp: Date.now(), // Per evitare cache issues
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+    }
+
+    const data: GeneratedImage = await response.json()
+
+    if (!data.finalImage || !data.downloadUrl) {
+      throw new Error("Invalid response from image generation service")
+    }
+
+    return data
+  } catch (error) {
+    console.error("Error in generateFinalImage:", error)
+    throw error
+  }
+}
+
+// Funzione per scaricare l'immagine generata
+export function downloadImage(downloadUrl: string, filename?: string): void {
+  try {
+    const link = document.createElement("a")
+    link.href = downloadUrl
+    link.download = filename || `msc-personalized-${Date.now()}.png`
+
+    // Aggiungi il link al DOM temporaneamente
+    document.body.appendChild(link)
+    link.click()
+
+    // Rimuovi il link dal DOM
+    document.body.removeChild(link)
+  } catch (error) {
+    console.error("Error downloading image:", error)
+    throw new Error("Failed to download image")
+  }
+}
+
+// Funzione helper per validare i dati degli step precedenti
+export function validateStepData(): { isValid: boolean; missingSteps: string[] } {
+  const missingSteps: string[] = []
+
+  const step1Data = localStorage.getItem("step1_images")
+  const step2Data = localStorage.getItem("step2_signature")
+
+  if (!step1Data) {
+    missingSteps.push("Step 1 (Upload Images)")
+  } else {
+    try {
+      const parsed = JSON.parse(step1Data)
+      if (!parsed.images || parsed.images.length === 0) {
+        missingSteps.push("Step 1 (No images found)")
+      }
+    } catch {
+      missingSteps.push("Step 1 (Invalid data)")
+    }
+  }
+
+  if (!step2Data) {
+    missingSteps.push("Step 2 (Signature)")
+  } else {
+    try {
+      const parsed = JSON.parse(step2Data)
+      if (!parsed.signature) {
+        missingSteps.push("Step 2 (No signature found)")
+      }
+    } catch {
+      missingSteps.push("Step 2 (Invalid data)")
+    }
+  }
+
+  return {
+    isValid: missingSteps.length === 0,
+    missingSteps,
+  }
+}
+
+// Funzione per pulire i dati della sessione (opzionale)
+export function clearSessionData(): void {
+  localStorage.removeItem("step1_images")
+  localStorage.removeItem("step2_signature")
+  localStorage.removeItem("step3_generated")
+}
+
+// Funzione per salvare l'immagine generata nella sessione
+export function saveGeneratedImage(imageData: GeneratedImage): void {
+  try {
+    localStorage.setItem("step3_generated", JSON.stringify(imageData))
+  } catch (error) {
+    console.warn("Failed to save generated image to localStorage:", error)
+  }
+}
+
+// Funzione per recuperare l'immagine generata dalla sessione
+export function getGeneratedImage(): GeneratedImage | null {
+  try {
+    const data = localStorage.getItem("step3_generated")
+    return data ? JSON.parse(data) : null
+  } catch (error) {
+    console.warn("Failed to retrieve generated image from localStorage:", error)
+    return null
+  }
+}

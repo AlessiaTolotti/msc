@@ -1,18 +1,176 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
+import Image from "next/image"
+
+// Tipi per le risposte del backend
+interface BackendResponse {
+  processedImage: string
+  signature: string
+  success: boolean
+  message?: string
+}
+
+interface GeneratedImage {
+  finalImage: string
+  downloadUrl: string
+}
+
+interface Step1Data {
+  images: string[]
+}
+
+interface Step2Data {
+  signature: string
+  name?: string
+}
+
+// Funzioni di fetch integrate nel componente
+const fetchProcessedData = async (): Promise<BackendResponse> => {
+  const step1DataRaw = localStorage.getItem("step1_images")
+  const step2DataRaw = localStorage.getItem("step2_signature")
+
+  if (!step1DataRaw || !step2DataRaw) {
+    throw new Error("Missing data from previous steps")
+  }
+
+  const step1Data: Step1Data = JSON.parse(step1DataRaw)
+  const step2Data: Step2Data = JSON.parse(step2DataRaw)
+
+  const response = await fetch("/api/process-images", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      images: step1Data.images,
+      signature: step2Data.signature,
+      name: step2Data.name,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+
+  const data: BackendResponse = await response.json()
+
+  if (!data.success) {
+    throw new Error(data.message || "Failed to process images")
+  }
+
+  return data
+}
+
+const generateFinalImage = async (
+  processedImage: string,
+  signature: string,
+  background: string,
+): Promise<GeneratedImage> => {
+  const response = await fetch("/api/generate-final-image", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      processedImage,
+      signature,
+      background,
+      timestamp: Date.now(),
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+
+  return await response.json()
+}
+
+const downloadImage = (downloadUrl: string, filename: string): void => {
+  const link = document.createElement("a")
+  link.href = downloadUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+const validateStepData = (): { isValid: boolean; missingSteps: string[] } => {
+  const missingSteps: string[] = []
+  const step1Data = localStorage.getItem("step1_images")
+  const step2Data = localStorage.getItem("step2_signature")
+
+  if (!step1Data) {
+    missingSteps.push("Step 1 (Upload Images)")
+  }
+  if (!step2Data) {
+    missingSteps.push("Step 2 (Signature)")
+  }
+
+  return {
+    isValid: missingSteps.length === 0,
+    missingSteps,
+  }
+}
+
+const saveGeneratedImage = (imageData: GeneratedImage): void => {
+  localStorage.setItem("step3_generated", JSON.stringify(imageData))
+}
+
+const getGeneratedImage = (): GeneratedImage | null => {
+  const data = localStorage.getItem("step3_generated")
+  return data ? JSON.parse(data) : null
+}
 
 export default function Step3Page() {
   const router = useRouter()
   const [selectedBackground, setSelectedBackground] = useState<string | null>(null)
+  const [backendData, setBackendData] = useState<BackendResponse | null>(null)
+  const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
 
   const backgrounds = [
-    { id: "ship", name: "Ship" },
-    { id: "airplane", name: "Airplane" },
-    { id: "train", name: "Train" },
-    { id: "camion", name: "Camion" }
+    { id: "ship", name: "Ship", preview: "/backgrounds/ship-preview.jpg" },
+    { id: "airplane", name: "Airplane", preview: "/backgrounds/airplane-preview.jpg" },
+    { id: "train", name: "Train", preview: "/backgrounds/train-preview.jpg" },
+    { id: "camion", name: "Camion", preview: "/backgrounds/camion-preview.jpg" },
   ]
+
+  // Carica i dati quando la pagina si monta
+  useEffect(() => {
+    const initializePage = async () => {
+      const validation = validateStepData()
+
+      if (!validation.isValid) {
+        return
+      }
+
+      const savedImage = getGeneratedImage()
+      if (savedImage) {
+        setGeneratedImage(savedImage)
+      }
+
+      await loadProcessedData()
+    }
+
+    const loadProcessedData = async () => {
+      setIsLoading(true)
+
+      try {
+        const data = await fetchProcessedData()
+        setBackendData(data)
+      } catch (err) {
+        console.error("Error loading processed data:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    initializePage()
+  }, [])
 
   const onStep1Click = useCallback(() => {
     router.push("/")
@@ -22,24 +180,41 @@ export default function Step3Page() {
     router.push("/type")
   }, [router])
 
-  const onGenerateClick = useCallback(() => {
-    if (selectedBackground) {
-      // Qui chiameresti il backend per generare l'immagine finale
-      console.log("Generating final image with background:", selectedBackground)
-      // router.push("/result")
-      alert(`Generating your image with ${selectedBackground} background!`)
-    } else {
-      alert("Please select a background first!")
+  const onGenerateClick = useCallback(async () => {
+    if (!selectedBackground || !backendData) {
+      return
     }
-  }, [selectedBackground])
+
+    setIsGenerating(true)
+
+    try {
+      const imageData = await generateFinalImage(backendData.processedImage, backendData.signature, selectedBackground)
+      setGeneratedImage(imageData)
+      saveGeneratedImage(imageData)
+    } catch (err) {
+      console.error("Error generating image:", err)
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [selectedBackground, backendData])
+
+  const onDownloadClick = useCallback(() => {
+    if (!generatedImage || !selectedBackground) return
+
+    const filename = `msc-personalized-${selectedBackground}-${Date.now()}.png`
+    downloadImage(generatedImage.downloadUrl, filename)
+  }, [generatedImage, selectedBackground])
 
   const onBackgroundSelect = useCallback((backgroundId: string) => {
     setSelectedBackground(backgroundId)
   }, [])
 
-  const onNavClick = useCallback((path: string) => {
-    router.push(path)
-  }, [router])
+  const onNavClick = useCallback(
+    (path: string) => {
+      router.push(path)
+    },
+    [router],
+  )
 
   return (
     <div
@@ -159,7 +334,7 @@ export default function Step3Page() {
             borderRadius: "20px",
             backgroundColor: "white",
             width: "380px",
-            height: "620px", // Aumentata l'altezza per fare spazio al bottone
+            height: "620px",
             padding: "40px",
             justifySelf: "end",
           }}
@@ -189,7 +364,7 @@ export default function Step3Page() {
               cursor: "pointer",
               transition: "border-color 0.3s ease",
             }}
-          onClick={onStep1Click}
+            onClick={onStep1Click}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = "#d1d5db"
             }}
@@ -286,7 +461,7 @@ export default function Step3Page() {
           {/* Step 3 - Select MSG bg - ATTIVO (Giallo) */}
           <div
             style={{
-              marginBottom: "20px", // Aggiunto margine per separare dal grid
+              marginBottom: "20px",
               padding: "20px",
               borderRadius: "15px",
               backgroundColor: "#efd682",
@@ -333,7 +508,7 @@ export default function Step3Page() {
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: "12px",
-              marginBottom: "40px", // Aggiunto spazio prima del bottone
+              marginBottom: "40px",
             }}
           >
             {backgrounds.map((bg) => (
@@ -345,58 +520,86 @@ export default function Step3Page() {
                   backgroundColor: selectedBackground === bg.id ? "#fef3c7" : "white",
                   padding: "16px",
                   textAlign: "center",
-                  cursor: "pointer",
+                  cursor: isLoading ? "not-allowed" : "pointer",
                   transition: "all 0.3s ease",
+                  opacity: isLoading ? 0.6 : 1,
                 }}
-                onClick={() => onBackgroundSelect(bg.id)}
+                onClick={() => !isLoading && onBackgroundSelect(bg.id)}
                 onMouseEnter={(e) => {
-                  if (selectedBackground !== bg.id) {
+                  if (selectedBackground !== bg.id && !isLoading) {
                     e.currentTarget.style.borderColor = "#efd682"
                     e.currentTarget.style.backgroundColor = "#fefce8"
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (selectedBackground !== bg.id) {
+                  if (selectedBackground !== bg.id && !isLoading) {
                     e.currentTarget.style.borderColor = "#e5e7eb"
                     e.currentTarget.style.backgroundColor = "white"
                   }
                 }}
               >
-                <div style={{ fontSize: "16px", fontWeight: "600", color: "black" }}>
-                  {bg.name}
-                </div>
+                <div style={{ fontSize: "16px", fontWeight: "600", color: "black" }}>{bg.name}</div>
               </div>
             ))}
           </div>
 
-          {/* Generate Button - Spostato più in basso */}
+          {/* Generate Button */}
           <button
             onClick={onGenerateClick}
+            disabled={!selectedBackground || !backendData || isLoading || isGenerating}
             style={{
               width: "100%",
-              backgroundColor: selectedBackground ? "#efd682" : "#d1d5db",
-              color: selectedBackground ? "black" : "#6b7280",
+              backgroundColor: selectedBackground && backendData && !isLoading ? "#efd682" : "#d1d5db",
+              color: selectedBackground && backendData && !isLoading ? "black" : "#6b7280",
               border: "none",
               borderRadius: "15px",
-              padding: "18px", // Aumentato il padding per renderlo più prominente
+              padding: "18px",
               fontSize: "18px",
               fontWeight: "600",
-              cursor: selectedBackground ? "pointer" : "not-allowed",
+              cursor: selectedBackground && backendData && !isLoading ? "pointer" : "not-allowed",
               transition: "all 0.3s ease",
+              marginBottom: generatedImage ? "16px" : "0",
             }}
             onMouseEnter={(e) => {
-              if (selectedBackground) {
+              if (selectedBackground && backendData && !isLoading && !isGenerating) {
                 e.currentTarget.style.backgroundColor = "#e6c875"
               }
             }}
             onMouseLeave={(e) => {
-              if (selectedBackground) {
+              if (selectedBackground && backendData && !isLoading && !isGenerating) {
                 e.currentTarget.style.backgroundColor = "#efd682"
               }
             }}
           >
-            Generate Image
+            {isGenerating ? "Generating..." : "Generate Image"}
           </button>
+
+          {/* Download Button */}
+          {generatedImage && (
+            <button
+              onClick={onDownloadClick}
+              style={{
+                width: "100%",
+                backgroundColor: "#10b981",
+                color: "white",
+                border: "none",
+                borderRadius: "15px",
+                padding: "18px",
+                fontSize: "18px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#059669"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#10b981"
+              }}
+            >
+              Download Image
+            </button>
+          )}
         </div>
 
         {/* Arrow */}
@@ -405,7 +608,7 @@ export default function Step3Page() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            height: "620px", // Aggiornata l'altezza per allinearsi con la card
+            height: "620px",
           }}
         >
           <svg width="90" height="40" viewBox="0 0 90 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -427,12 +630,12 @@ export default function Step3Page() {
           </svg>
         </div>
 
-        {/* Empty Area - Backend will handle image generation */}
+        {/* Generated Image Area */}
         <div
           style={{
             width: "380px",
-            height: "620px", // Aggiornata l'altezza per allinearsi con la card
-            backgroundColor: "#d1d5db",
+            height: "620px",
+            backgroundColor: isLoading ? "#f3f4f6" : "#d1d5db",
             borderRadius: "20px",
             justifySelf: "start",
             display: "flex",
@@ -441,11 +644,55 @@ export default function Step3Page() {
             color: "#6b7280",
             fontSize: "18px",
             fontWeight: "500",
+            position: "relative",
+            overflow: "hidden",
           }}
         >
-          Generated image will appear here
+          {isLoading ? (
+            <div style={{ textAlign: "center" }}>
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  border: "4px solid #e5e7eb",
+                  borderTop: "4px solid #efd682",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                  margin: "0 auto 16px",
+                }}
+              />
+              <div>Processing your images...</div>
+            </div>
+          ) : generatedImage ? (
+            <Image
+              src={generatedImage.finalImage || "/placeholder.svg"}
+              alt="Generated personalized image"
+              fill
+              style={{ objectFit: "contain" }}
+            />
+          ) : backendData ? (
+            <div style={{ textAlign: "center", padding: "20px" }}>
+              <div style={{ marginBottom: "16px" }}>✅ Images processed successfully!</div>
+              <div>Select a background and generate your image</div>
+            </div>
+          ) : (
+            <div style={{ textAlign: "center", padding: "20px" }}>
+              <div>Generated image will appear here</div>
+            </div>
+          )}
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </div>
   )
 }
